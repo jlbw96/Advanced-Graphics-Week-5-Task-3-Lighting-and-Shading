@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+ <html>
+ <head>
+     <title>Lighting and shading</title> 
+           <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1"> 
+    
+           <!-- The following meta line optimizes the site for mobile devices. It sets the viewport size 
+          to the screen size, so it will be displayed maximized, but unscaled. --> 
+          <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1"> 
+		  
+    <script src="js/three.min.js"></script>
+	<script src="js/Detector.js"></script>
+		   <script src="js/OrbitControls.js"></script> 
+ </head>
+
+<body>
+
+<div id="overlaytext" style="position: absolute; top: -30px; left: 100px"> 
+<canvas id="practical-WebGL"  width="500" height="500"></canvas>
+ 
+ <h2>Lighting and shading</h2>
+ This is the third and last portfolio task for Coursework 1. 
+ The submission deadline for Coursework 1 is 12:00(noon), Tuesday, 10th March.
+ 
+ <h3>Pyramid modeling and visualization</h3>
+ <p>The provided code models and visualizes a pyramid in six triangles, with two at the bottom and four for the four sides. 
+  The pyramid is composed of 5 vertices: v1: (100, 0, 100), v2: (100, 0, -100), 
+ v3: (-100, 0, -100), v4: (-100, 0, 100),
+ and v5: (0, 100, 0). All these vertices can be defined in three.js as "new THREE.Vector3();" The six triangles can be defined as 
+ "new THREE.Face3(v3, v2, v1);" "new THREE.Face3(v1, v0, v3);" "new THREE.Face3(v3, v0, v4);" "new THREE.Face3(v0, v1, v4);" 
+ "new THREE.Face3(v1, v2, v3)" and "new THREE.Face3(v2, v3, v4);" where the vertices should be put in proper order in order to 
+ see them as expected. Different faces have different colors. The five colors used to represent 
+ each face are "0xcccccc", "green", "blue", "yellow", and "red", which can be defined as "new THREE.Color()". 
+ The geometry and material of the pyramid are defined as "var pyramidGeom=new THREE.Geometry()" with the vertices and faces defined above and 
+"var material = new THREE.MeshPhongMaterial({vertexColors: THREE.FaceColors})". The pyramid can be defined as 
+"var pyramid=new THREE.mesh(pryamidGeom, material);"
+ This pyramid enables to investigate how different shading models and face and vertex normals would affect its appearance. </p>  
+ 
+ <p> Read the code carefully and make sure that you understand the role of each line. </p>
+ 
+ <h3>Subtasks</h3>
+ 
+ <p>Try to complete and report on the following subtasks:  
+    <ol>
+     <li> Compare the shading models: flat shading and smooth shading, see how they affect the appearance of the pyramid and explain why.
+	 <li> Different faces have different colours. Modify the code so that the colors of different faces along the borders can be mixed and 
+	      changed gradually and smoothly.
+	 <font color="red">Hints</font>: Probably you need to assign a color to each vertex in each face of the pyramid.
+	 <li> How is the appearance of the pyramid affected by deleting "pyramidGeom.computeVertexNormals();" ? 
+	 <li> Develop your own code to calculate the vertex normals of the pyramid, where the normals of the faces that share a vertex are treated equally. 
+	 <font color="red">Hints</font>: A normal vector nv is represented as: "var nv=new THREE.Vector3()". It can be initiliazed by "nv.set(0, 0, 0)".  
+	 "nv.normalize()" normalises its length to one unit.  
+	 <li> You can observe in the code that colors can be assigned in different ways: material color, assigned color to each face, and 
+     the color calculated using the selected shading model. Investigate how the final color of the pyramid surface is determined.  	 
+	 </ol>
+	 <b>Bonus subtask:</b> 	While three.js calculates the vertex normals as the average of the normals of the faces 
+	 that share them, this may unintentionally smooth sharp edges. 
+	 Compute the vertex normal only when the including angle between the equally averaged incident-face normals 
+	 and the relevant face normals that share it are smaller than a threshold, 60 degrees for example. 
+	 <font color="red">Hints</font>: You probably need to calculate the including angle 
+	 between the vertex normal and the face normal through the function "angleTo" in "THREE.Vector3()": "vn.angleTo(fn)". 
+	 If this angle is smaller than the threshold, then the vertex normal will be accepted. 
+	 Otherwise, the vertex normal will be the same as that of the face. Note that the vertex normal is defined relatively to each face it lies in. 
+	 
+ </p>
+ </div>
+ 
+<div id="test"></div>
+
+<script>
+
+    var scene; 
+	var camera;
+    var renderer;
+	var pyramidGeom, controls;
+	
+	initScene();
+	renderScene();
+	
+	function initScene() {
+	
+	var v, vl, f, fl, face, vertices;
+    var areaWeighted=false, angle_threshold;
+    var vA, vB, vC, vD;
+    var cb = new THREE.Vector3(), ab = new THREE.Vector3(),
+        db = new THREE.Vector3(), dc = new THREE.Vector3(), bc = new THREE.Vector3();  
+  
+    if(Detector.webgl) { 
+                      renderer = new THREE.WebGLRenderer({antialias:true}); 
+   
+                  // If its not supported, instantiate the canvas renderer to support all non WebGL 
+                  // browsers 
+                  } else { 
+                      renderer = new THREE.CanvasRenderer(); 
+                  } 
+				  
+				  var WIDTH  = window.innerWidth;
+				  var HEIGHT = window.innerHeight;
+				  
+				  renderer.setClearColor(0x000000, 1);
+				  renderer.setSize(WIDTH/2, HEIGHT/2);				  
+				  
+				  //document.body.appendChild(renderer.domElement);
+				  document.getElementById("test").appendChild(renderer.domElement);
+				  
+	scene = new THREE.Scene();
+
+	camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 0.1, 10000);
+	camera.position.y = 160;
+	camera.position.z = 400;
+	camera.lookAt(scene.position);
+
+	controls=new THREE.OrbitControls(camera);
+	
+	scene.add(camera);
+
+	var ambientLight = new THREE.AmbientLight(0x222222);
+        scene.add(ambientLight);
+    
+    var light = new THREE.PointLight(0xffffFF, 1, 0);
+        light.position.set(0, 300, 200);
+        scene.add(light);
+		
+	pyramidGeom = new THREE.Geometry();
+	
+  pyramidGeom.vertices = [  // array of Vector3 giving vertex coordinates
+        new THREE.Vector3( 100, 0, 100 ),    // vertex number 0
+        new THREE.Vector3( 100, 0, -100 ),   // vertex number 1
+        new THREE.Vector3( -100, 0, -100),  // vertex number 2
+        new THREE.Vector3( -100, 0, 100),   // vertex number 3
+        new THREE.Vector3( 0, 100, 0 )     // vertex number 4
+    ];
+    
+pyramidGeom.faces = [
+//new THREE.Face4( 3, 2, 1, 0),  // bottom face is a quad
+        new THREE.Face3( 3, 2, 1),
+        new THREE.Face3( 1, 0, 3),		
+        new THREE.Face3( 3, 0, 4),     // remaining faces are triangles
+        new THREE.Face3( 0, 1, 4),
+        new THREE.Face3( 1, 2, 4),
+        new THREE.Face3( 2, 3, 4)
+    ]; 
+
+	pyramidGeom.computeFaceNormals(); // Computes face normals. 
+	 
+    pyramidGeom.computeVertexNormals(); // Computes vertex normals by averaging face normals.
+                                        // Face normals must be existing / computed beforehand. 	
+   var colors = [ 
+   new THREE.Color(0xCCCCCC),
+   new THREE.Color("green"),
+   new THREE.Color("blue"),
+   new THREE.Color("yellow"),
+   new THREE.Color("red")
+   ];
+   
+   pyramidGeom.faces[0].color = colors[0];
+   pyramidGeom.faces[1].color = colors[0];
+   pyramidGeom.faces[2].color = colors[1];
+   pyramidGeom.faces[3].color = colors[2];
+   pyramidGeom.faces[4].color = colors[3];
+   pyramidGeom.faces[5].color = colors[4];
+   
+  
+ var material = new THREE.MeshPhongMaterial( { 
+  // color: 0xff0000, 
+   vertexColors:THREE.FaceColors,
+  // flatShading: true,
+   transparent: true
+ //side:THREE.DoubleSide
+ } );
+
+ var pyramid = new THREE.Mesh( pyramidGeom, material );
+ pyramid.rotation.x=30*Math.PI/180;
+ 
+ scene.add(pyramid);
+
+	}
+
+ //function computeVertexNormals( angle_threshold, areaWeighted ) { //will compute normals if faces diverge less than given angle (in degrees)
+//}
+	function renderScene() {
+      renderer.render(scene, camera);
+	  controls.update();
+	  requestAnimationFrame(renderScene);
+	}
+
+		</script>
+		
+	</body>
+ </html>
